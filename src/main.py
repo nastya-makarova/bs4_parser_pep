@@ -1,3 +1,4 @@
+import csv
 import logging
 import re
 from urllib.parse import urljoin
@@ -6,7 +7,13 @@ import requests_cache
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
-from constants import BASE_DIR, MAIN_DOC_URL
+from constants import (
+    BASE_DIR,
+    EXPECTED_STATUS,
+    MAIN_DOC_URL,
+    PEP_DOC_URL
+)
+    
 from configs import configure_argument_parser, configure_logging
 from outputs import control_output
 from utils import get_response, find_tag
@@ -33,7 +40,6 @@ def whats_new(session):
         version_link = urljoin(whats_new_url, href)
         response = get_response(session, version_link)
         if response is None:
-            # Если страница не загрузится, программа перейдёт к следующей ссылке.
             continue  
         soup = BeautifulSoup(response.text, features='lxml')
         h1 = find_tag(soup, 'h1')
@@ -75,7 +81,6 @@ def latest_versions(session):
 
 
 def download(session):
-    # Вместо константы DOWNLOADS_URL, используйте переменную downloads_url.
     downloads_url = urljoin(MAIN_DOC_URL, 'download.html')
     response = get_response(session, downloads_url)
     if response is None:
@@ -94,44 +99,108 @@ def download(session):
 
     with open(archive_path, 'wb') as file:
         file.write(response.content)
-    # Допишите этот код в самом конце функции.
-    logging.info(f'Архив был загружен и сохранён: {archive_path}') 
+    logging.info(f'Архив был загружен и сохранён: {archive_path}')
+
+
+def pep(session):
+    response = get_response(session, PEP_DOC_URL)
+    response.encoding = 'utf-8'
+    soup = BeautifulSoup(response.text, 'lxml')
+    # находим все подходящие таблицы
+    tables = soup.find_all(
+        'table',
+        attrs={'class': 'pep-zero-table docutils align-default'}
+    )
+
+    table_bodies = []
+    statuses = []
+
+    for table in tables:
+        # необходимо только тело таблицы, без заголовка
+        table_bodies.extend(table.find_all('tbody'))
+
+    for body in table_bodies:
+        # находим все строки
+        rows = body.find_all('tr')
+        for row in rows:
+            status_tag = find_tag(row, 'td')
+            # проверяем содержит ли статус
+            if len(status_tag.text) == 1:
+                preview_status = ''
+            # получаем статус из общей таблицы
+            preview_status = status_tag.text[1:]
+            # находим тег с ссылкой
+            link_tag = status_tag.find_next_sibling()
+            link = link_tag.find('a')
+            pep_url = urljoin(PEP_DOC_URL, link['href'])
+
+            response = get_response(session, pep_url)
+            response.encoding = 'utf-8'
+            soup = BeautifulSoup(response.text, 'lxml')
+            # находим первую таблицу
+            table = soup.find('dl')
+            # находим все теги dt
+            tags_dt = table.find_all('dt')
+            for tag in tags_dt:
+                # определяем статус на странице PEP
+                main_status = None
+                # находим тег с текстом Status
+                if tag.text == 'Status:':
+                    # сам статус в следующем теге
+                    main_status = tag.find_next_sibling().text
+                    statuses.append(main_status)
+                    # проверяем совпадает ли статус на странице PEP
+                    # со статусом в общем списке
+                    if main_status not in EXPECTED_STATUS[preview_status]:
+                        info_msg = f'Несовпадающие статусы: {pep_url}'
+                        f'Статус в карточке: {main_status}'
+                        f'Ожидаемые статусы: {EXPECTED_STATUS[preview_status]}'
+                        logging.info(info_msg, stack_info=True)
+                    break
+    # полученные данные
+    data = [
+        ['Статус', 'Количество'],
+        ['Active', statuses.count('Active')],
+        ['Accepted', statuses.count('Accepted')],
+        ['Deferred', statuses.count('Active')],
+        ['Final', statuses.count('Active')],
+        ['Provisional', statuses.count('Active')],
+        ['Rejected', statuses.count('Active')],
+        ['Withdrawn', statuses.count('Active')],
+        ['Draft', statuses.count('Active')],
+        ['Active', statuses.count('Active')],
+        ['Total', len(statuses)]
+    ]
+    # записываем в csv файл
+    file_path = BASE_DIR / 'pep.csv'
+    with open(file_path, mode='w') as file:
+        writer = csv.writer(file)
+        writer.writerows(data)
+    logging.info('Данные о статусах документов сохранены в файл pep.csv') 
 
 
 MODE_TO_FUNCTION = {
     'whats-new': whats_new,
     'latest-versions': latest_versions,
     'download': download,
+    'pep': pep
 }
 
 
 def main():
-    # Запускаем функцию с конфигурацией логов.
     configure_logging()
-    # Отмечаем в логах момент запуска программы.
     logging.info('Парсер запущен!')
-    # Конфигурация парсера аргументов командной строки —
-    # передача в функцию допустимых вариантов выбора.
     arg_parser = configure_argument_parser(MODE_TO_FUNCTION.keys())
-    # Считывание аргументов из командной строки.
     args = arg_parser.parse_args()
-    # Логируем переданные аргументы командной строки.
     logging.info(f'Аргументы командной строки: {args}')
-    # Создание кеширующей сессии.
     session = requests_cache.CachedSession()
-    # Если был передан ключ '--clear-cache', то args.clear_cache == True.
     if args.clear_cache:
-        # Очистка кеша.
         session.cache.clear()
 
-    # Получение из аргументов командной строки нужного режима работы.
     parser_mode = args.mode
     results = MODE_TO_FUNCTION[parser_mode](session)
-    # Если из функции вернулись какие-то результаты,
     if results is not None:
-        # передаём их в функцию вывода вместе с аргументами командной строки.
         control_output(results, args)
-    # Логируем завершение работы парсера.
     logging.info('Парсер завершил работу.') 
 
 
