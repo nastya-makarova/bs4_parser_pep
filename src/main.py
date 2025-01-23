@@ -117,7 +117,11 @@ def pep(session):
     )
 
     table_bodies = []
-    statuses = []
+
+    results = {}
+    for statuses in EXPECTED_STATUS.values():
+        for status in statuses:
+            results[status] = 0
 
     for table in tables:
         # необходимо только тело таблицы, без заголовка
@@ -152,7 +156,6 @@ def pep(session):
                 if tag.text == 'Status:':
                     # сам статус в следующем теге
                     main_status = tag.find_next_sibling().text
-                    statuses.append(main_status)
                     # проверяем совпадает ли статус на странице PEP
                     # со статусом в общем списке
                     if main_status not in EXPECTED_STATUS[preview_status]:
@@ -163,21 +166,10 @@ def pep(session):
                             f'{EXPECTED_STATUS[preview_status]}'
                         )
                         logging.info(info_msg)
+                        continue
+                    results[main_status] += 1
                     break
-    # полученные данные
-    results = [
-        ['Статус', 'Количество'],
-        ['Active', statuses.count('Active')],
-        ['Accepted', statuses.count('Accepted')],
-        ['Deferred', statuses.count('Active')],
-        ['Final', statuses.count('Active')],
-        ['Provisional', statuses.count('Active')],
-        ['Rejected', statuses.count('Active')],
-        ['Withdrawn', statuses.count('Active')],
-        ['Draft', statuses.count('Active')],
-        ['Active', statuses.count('Active')],
-        ['Total', len(statuses)]
-    ]
+    results['Total'] = sum(results.values())
     return results
 
 

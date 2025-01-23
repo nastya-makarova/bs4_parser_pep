@@ -18,15 +18,23 @@ def control_output(results, cli_args):
 
 
 def default_output(results):
-    for row in results:
-        print(*row)
+    if isinstance(results, dict):
+        for key, value in results.items():
+            print(f'{key}: {value}')
+    else:
+        for row in results:
+            print(*row)
 
 
 def pretty_output(results):
     table = PrettyTable()
-    table.field_names = results[0]
-    table.align = 'l'
-    table.add_rows(results[1:])
+    if isinstance(results, dict):
+        table.field_names = list(results.keys())
+        table.add_row(list(results.values()))
+    else:
+        table.field_names = results[0]
+        table.align = 'l'
+        table.add_rows(results[1:])
     print(table)
 
 
@@ -40,5 +48,10 @@ def file_output(results, cli_args):
     file_path = results_dir / file_name
     with open(file_path, 'w', encoding='utf-8') as f:
         writer = csv.writer(f, dialect='unix')
-        writer.writerows(results)
+        if isinstance(results, dict):
+            writer.writerow(['Статус', 'Количество'])
+            for key, value in results.items():
+                writer.writerow([key, value])
+        else:
+            writer.writerows(results)
     logging.info(f'Файл с результатами был сохранён: {file_path}')
