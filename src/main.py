@@ -179,12 +179,6 @@ def pep(session):
         ['Active', statuses.count('Active')],
         ['Total', len(statuses)]
     ]
-    # # записываем в csv файл
-    # file_path = BASE_DIR / 'pep.csv'
-    # with open(file_path, mode='w') as file:
-    #     writer = csv.writer(file)
-    #     writer.writerows(data)
-    # logging.info('Данные о статусах документов сохранены в файл pep.csv')
     return results
 
 
