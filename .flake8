@@ -5,4 +5,8 @@ paths =
   ./src
 max-complexity = 10
 exclude =
-  tests
+  tests,
+  venv/,
+  */venv/,
+ignore =
+    W503, I001, I002, I003, I004, I005, I006, I007, I008, I009, I010

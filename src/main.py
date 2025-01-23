@@ -13,7 +13,7 @@ from constants import (
     MAIN_DOC_URL,
     PEP_DOC_URL
 )
-    
+
 from configs import configure_argument_parser, configure_logging
 from outputs import control_output
 from utils import get_response, find_tag
@@ -31,7 +31,10 @@ def whats_new(session):
 
     div_with_ul = find_tag(main_div, 'div', attrs={'class': 'toctree-wrapper'})
 
-    sections_by_python = div_with_ul.find_all('li', attrs={'class': 'toctree-l1'})
+    sections_by_python = div_with_ul.find_all(
+        'li',
+        attrs={'class': 'toctree-l1'}
+    )
 
     results = [('Ссылка на статью', 'Заголовок', 'Редактор, автор')]
     for section in tqdm(sections_by_python):
@@ -39,8 +42,6 @@ def whats_new(session):
         href = version_a_tag['href']
         version_link = urljoin(whats_new_url, href)
         response = get_response(session, version_link)
-        if response is None:
-            continue  
         soup = BeautifulSoup(response.text, features='lxml')
         h1 = find_tag(soup, 'h1')
         dl = find_tag(soup, 'dl')
@@ -69,9 +70,9 @@ def latest_versions(session):
     for a_tag in a_tags:
         link = a_tag['href']
         text_match = re.search(pattern, a_tag.text)
-        if text_match is not None:  
+        if text_match is not None:
             version, status = text_match.groups()
-        else:  
+        else:
             version, status = a_tag.text, ''
         results.append(
             (link, version, status)
@@ -88,7 +89,11 @@ def download(session):
     soup = BeautifulSoup(response.text, features='lxml')
     main_tag = find_tag(soup, 'div', {'role': 'main'})
     table_tag = find_tag(main_tag, 'table', {'class': 'docutils'})
-    pdf_a4_tag = find_tag(table_tag, 'a', {'href': re.compile(r'.+pdf-a4\.zip$')})
+    pdf_a4_tag = find_tag(
+        table_tag,
+        'a',
+        {'href': re.compile(r'.+pdf-a4\.zip$')}
+    )
     pdf_a4_link = pdf_a4_tag['href']
     archive_url = urljoin(downloads_url, pdf_a4_link)
     filename = archive_url.split('/')[-1]
@@ -152,13 +157,16 @@ def pep(session):
                     # проверяем совпадает ли статус на странице PEP
                     # со статусом в общем списке
                     if main_status not in EXPECTED_STATUS[preview_status]:
-                        info_msg = f'Несовпадающие статусы: {pep_url}'
-                        f'Статус в карточке: {main_status}'
-                        f'Ожидаемые статусы: {EXPECTED_STATUS[preview_status]}'
-                        logging.info(info_msg, stack_info=True)
+                        info_msg = (
+                            f'Несовпадающие статусы: {pep_url}\n'
+                            f'Статус в карточке: {main_status}\n'
+                            'Ожидаемые статусы:'
+                            f'{EXPECTED_STATUS[preview_status]}'
+                        )
+                        logging.info(info_msg)
                     break
     # полученные данные
-    data = [
+    results = [
         ['Статус', 'Количество'],
         ['Active', statuses.count('Active')],
         ['Accepted', statuses.count('Accepted')],
@@ -171,12 +179,13 @@ def pep(session):
         ['Active', statuses.count('Active')],
         ['Total', len(statuses)]
     ]
-    # записываем в csv файл
-    file_path = BASE_DIR / 'pep.csv'
-    with open(file_path, mode='w') as file:
-        writer = csv.writer(file)
-        writer.writerows(data)
-    logging.info('Данные о статусах документов сохранены в файл pep.csv') 
+    # # записываем в csv файл
+    # file_path = BASE_DIR / 'pep.csv'
+    # with open(file_path, mode='w') as file:
+    #     writer = csv.writer(file)
+    #     writer.writerows(data)
+    # logging.info('Данные о статусах документов сохранены в файл pep.csv')
+    return results
 
 
 MODE_TO_FUNCTION = {
@@ -201,8 +210,8 @@ def main():
     results = MODE_TO_FUNCTION[parser_mode](session)
     if results is not None:
         control_output(results, args)
-    logging.info('Парсер завершил работу.') 
+    logging.info('Парсер завершил работу.')
 
 
 if __name__ == '__main__':
-    main() 
+    main()
