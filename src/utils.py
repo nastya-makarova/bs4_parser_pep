@@ -24,3 +24,11 @@ def find_tag(soup, tag, attrs=None):
         logging.error(error_msg, stack_info=True)
         raise ParserFindTagException(error_msg)
     return searched_tag
+
+
+def get_results_dict(dictionary):
+    results = {}
+    for statuses in dictionary.values():
+        for status in statuses:
+            results[status] = 0
+    return results

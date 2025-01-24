@@ -15,7 +15,7 @@ from constants import (
 
 from configs import configure_argument_parser, configure_logging
 from outputs import control_output
-from utils import get_response, find_tag
+from utils import get_response, get_results_dict, find_tag
 
 
 def whats_new(session):
@@ -107,6 +107,7 @@ def download(session):
 
 
 def pep(session):
+    results = get_results_dict(EXPECTED_STATUS)
     response = get_response(session, PEP_DOC_URL)
     response.encoding = 'utf-8'
     soup = BeautifulSoup(response.text, 'lxml')
@@ -115,13 +116,7 @@ def pep(session):
         'table',
         attrs={'class': 'pep-zero-table docutils align-default'}
     )
-
     table_bodies = []
-
-    results = {}
-    for statuses in EXPECTED_STATUS.values():
-        for status in statuses:
-            results[status] = 0
 
     for table in tables:
         # необходимо только тело таблицы, без заголовка
@@ -132,11 +127,12 @@ def pep(session):
         rows = body.find_all('tr')
         for row in rows:
             status_tag = find_tag(row, 'td')
-            # проверяем содержит ли статус
-            if len(status_tag.text) == 1:
-                preview_status = ''
-            # получаем статус из общей таблицы
-            preview_status = status_tag.text[1:]
+            # проверяем содержит ли тег статус
+            preview_status = (
+                status_tag.text[1:] if len(status_tag.text) > 1 else ''
+            )
+            if preview_status not in EXPECTED_STATUS:
+                logging.info(f'Неожиданный статус: {preview_status}')
             # находим тег с ссылкой
             link_tag = status_tag.find_next_sibling()
             link = link_tag.find('a')
