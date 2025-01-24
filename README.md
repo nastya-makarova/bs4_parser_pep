@@ -32,19 +32,19 @@ pip install -r requirements.txt
 **Пример команды:**
 Для запуска парсера в режиме ```whats-new```:
 ```
-python parser.py whats-new
+python main.py whats-new
 ```
 Для запуска в режиме latest-versions:
 ```
-python parser.py latest-versions
+python main.py latest-versions
 ````
 Для режима download:
 ```
-python parser.py download
+python main.py download
 ```
 Для режима pep:
 ```
-python parser.py pep
+python main.py pep
 ```
 
 ## Дополнительные параметры:
@@ -55,7 +55,7 @@ python parser.py pep
 Если не указано, используется стандартный вывод в консоль.
 Пример команды с дополнительными параметрами:
 ```
-python parser.py whats-new --output pretty
+python main.py whats-new --output pretty
 ```
 
 
@@ -67,4 +67,10 @@ python parser.py whats-new --output pretty
 * configs.py - Файл с настройками парсера и конфигурацией логирования.
 * outputs.py - Модуль для вывода результатов в консоль или в файл.
 * utils.py - Вспомогательные функции.
-* smain.py: Основной скрипт парсера, который выполняет парсинг в зависимости от выбранного режима.
+* main.py - Основной скрипт парсера, который выполняет парсинг в зависимости от выбранного режима.
+* exceptions.py - файл с пользовательским исключением.
+
+## Для получении справочной информации о параметрах командной строки и доступных режимах выполните команду:
+```
+python main.py -h
+```
